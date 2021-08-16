@@ -1,0 +1,15 @@
+main.c:97:7:PIDInputSWitch	0	static
+main.c:110:6:PID_vInit	16	static
+main.c:140:6:PID_Calc	8	static
+main.c:188:6:SPI1_start	8	static
+main.c:195:6:SPI1_transmit	4	static
+main.c:203:10:ADC_read	0	static
+main.c:220:19:HAL_ADC_Stop1	8	static
+main.c:227:19:HAL_ADC_PollForConversion1	0	static
+main.c:253:6:HAL_ADC_ConvCpltCallback	0	static
+main.c:264:6:HAL_TIM_PeriodElapsedCallback	32	static
+main.c:236:6:HAL_TIM_IRQHandler1	0	static
+main.c:365:6:SystemClock_Config	144	static,ignoring_inline_asm
+main.c:423:6:PeriphCommonClock_Config	208	static,ignoring_inline_asm
+main.c:294:5:main	8	static
+main.c:458:6:Error_Handler	0	static,ignoring_inline_asm
