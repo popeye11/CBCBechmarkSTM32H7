@@ -75,7 +75,7 @@ void Error_Handler(void);
 #define MODULATIONAMP 3
 #define DIG2VOLT16BIT 5.0355e-05  // 3.3[v]/65535 ->16bit
 #define VOLT2DIG12BIT 1.2409e+03 //3.3[v]/4096->12bit
-#define VOLT2DIG16BIT 1.9860e+04 //3.3[v]/2^16->16bit
+#define VOLT2DIG16BIT 26214 //1.9860e+04 //3.3[v]/2^16->16bit
 #define DAC_CHANNEL DAC_CHANNEL_2
 #define MAXCOUNT14BIT  4-1
 #define MAXCOUNT16BIT  16-1
@@ -124,6 +124,28 @@ typedef struct tPID     /// Struktur mit allen wichtigen Variablen des PI-Regler
      double ref;
      double outvalue;
 }tPID;
+typedef struct _tDDS
+{
+  int   enable;
+  float amp;
+  float freq;
+  float phaseOffset;
+  float phaseOffset_1ag;
+  float fclk;
+  int accumulatorWidth;
+  int LUTGridWidth;
+  int TWSum;
+  int TWSumShift;
+  float fclk_Shift_ACCWidth;
+  float pi_Shift_AccWidth;
+  float Out;
+  float ShiftOut;
+  float phasedlag;
+  float phaseround;
+  int	 TW;
+  int	 DetTW;
+}tDDS;
+tDDS InstanceDDS;
 tPID InstancePID1;
 tPID InstancePID2;
 void PID_vInit(tPID*);

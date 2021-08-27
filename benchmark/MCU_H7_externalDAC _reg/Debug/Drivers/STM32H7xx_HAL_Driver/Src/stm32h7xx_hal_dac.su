@@ -2,8 +2,8 @@ stm32h7xx_hal_dac.c:464:13:HAL_DAC_MspInit	0	static
 stm32h7xx_hal_dac.c:358:19:HAL_DAC_Init	8	static
 stm32h7xx_hal_dac.c:480:13:HAL_DAC_MspDeInit	0	static
 stm32h7xx_hal_dac.c:419:19:HAL_DAC_DeInit	8	static
-stm32h7xx_hal_dac.c:522:19:HAL_DAC_Start	16	static
-stm32h7xx_hal_dac.c:575:19:HAL_DAC_Stop	8	static
+stm32h7xx_hal_dac.c:522:19:HAL_DAC_Start	8	static
+stm32h7xx_hal_dac.c:575:19:HAL_DAC_Stop	4	static
 stm32h7xx_hal_dac.c:607:19:HAL_DAC_Start_DMA	24	static
 stm32h7xx_hal_dac.c:735:19:HAL_DAC_Stop_DMA	16	static
 stm32h7xx_hal_dac.c:852:19:HAL_DAC_SetValue	16	static

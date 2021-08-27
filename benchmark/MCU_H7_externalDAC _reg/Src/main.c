@@ -50,6 +50,14 @@
 #define DAC_ALIGNMENT DAC_ALIGN_12B_R
 #define hdac hdac1
 #define TIM2PSC 0
+#define INIVALUE 			0
+#define ACCUMULATORWIDTH    16
+#define LUTGRIDWIDTH        10
+#define BUFFER_LEN    200
+#define PI          		3.141592
+#define defrootTerm_LEN 	1024
+signed int LUT_T[defrootTerm_LEN];
+float      LUT_d[defrootTerm_LEN];
 uint32_t adc_value=0;
 uint32_t dacvalue=0;
 double volt_value=0;
@@ -78,6 +86,7 @@ double  ADC_duration = 0;
 double  PID_duration = 0;
 tPID* 		 pPID1       =   &InstancePID1;
 tPID* 		 pPID2       =   &InstancePID2;
+tDDS*        pDDS        =   &InstanceDDS;
 uint8_t PIDInputOption = 1;
 double LockInOutput = 0.0;
 double yout;
@@ -107,6 +116,7 @@ float PIDInputSWitch(uint8_t PIDInputOption, float ADCvalue,float LockIn)
 			}
 	 return(PIDInput);
 }
+
 void PID_vInit(tPID* pPID)
 {                                          ///< Zeiger auf Reglerstruktur
 	pPID->_Ts 				= 		1/CTRLFREQUENCY;
@@ -137,6 +147,109 @@ void PID_vInit(tPID* pPID)
 	pPID->a2 				=		pPID->_Kd/V2MUV/pPID->_Ts;
 	pPID->aw   				=		pPID->_Kaw*pPID->_Ts;
 };
+void DDS_vInit(float amp, float freq, float fclk,int accumulatorWidth, int LUTGridWidth)
+{
+	tDDS* 		 pDDS       =   &InstanceDDS;
+	float        temp      	=   0;
+	signed int 	 SinN      	=   LUTGridWidth;
+	float 		 StepNo    	=   (float)(1<<SinN);
+	float        StepEnc   	=   (float)(2.0f*PI-2.0f*PI/(StepNo-1.0))/(StepNo-1);
+	float        phi;
+	float        phi_lag;
+	pDDS->enable            =   1;
+	pDDS->amp 				= 	amp;
+	pDDS->freq 				= 	freq;
+	pDDS->phaseOffset 		= 	100;
+	pDDS->fclk 				= 	fclk;
+	pDDS->accumulatorWidth 	=	accumulatorWidth;
+	pDDS->LUTGridWidth 		= 	LUTGridWidth;
+	phi               		=   pDDS->phaseOffset/180*PI;
+	phi_lag                 =   pDDS->phaseOffset_1ag/180*PI;
+	pDDS->TWSumShift        = 	0;
+	pDDS->TWSum             = 	0;
+	pDDS->phaseOffset_1ag   = 	INIVALUE;
+	pDDS->fclk_Shift_ACCWidth = (pDDS->fclk)/(1<<pDDS-> accumulatorWidth);
+	pDDS->pi_Shift_AccWidth   = 10;//(float)(1<<pDDS-> accumulatorWidth)/PI/2.0;
+	pDDS->TW                =   round((pDDS->freq)/pDDS->fclk_Shift_ACCWidth);
+	pDDS->DetTW             =   round((phi-phi_lag)*(1<<pDDS-> accumulatorWidth)/PI/2.0f);
+    pDDS->Out               = 	0;
+    pDDS->ShiftOut          =	0;
+	for(int li=0; li<=(1<<LUTGridWidth)-1; li++)
+	{
+		LUT_T[li]=li;
+		LUT_d[li]=sinf(temp);
+		temp = temp+StepEnc;
+     }
+};
+float LUTinterp(float fLUTIndex, signed int* LUTX, float *LUTd)
+   {
+       signed int *IdxLUTX = LUTX;
+       float *IdxLUTd = LUTd;
+       float root_INTERPOLATED;
+       float lfm;
+       int intLUTIndex= (int)fLUTIndex;
+       float InputT  = fLUTIndex;
+       if ((InputT < *LUTX) )
+           {
+               return 0;
+           }
+
+       lfm = (LUTd[intLUTIndex+1]- LUTd[intLUTIndex])/ (LUTX[intLUTIndex+1]- LUTX[intLUTIndex]);
+       root_INTERPOLATED = ( lfm * (InputT- LUTX[intLUTIndex])) + LUTd[intLUTIndex] ;
+       if (InputT>=(float)defrootTerm_LEN-1)
+              {
+           	   lfm = (( LUTd[0] - LUTd[defrootTerm_LEN-1]));
+           	   root_INTERPOLATED = (( lfm * (InputT -LUTX[defrootTerm_LEN-1] ))) +  LUTd[defrootTerm_LEN-1];
+              }
+       return (root_INTERPOLATED);//(root_INTERPOLATED);
+}
+
+void DDS_Calc()
+{
+	tDDS* 		pDDS       =   &InstanceDDS;
+	int 		phase_out;
+	int 		phase_outShift;
+	float 		LUTIndexShift;
+	float 		LUTIndex;
+	float       Offset=1;
+
+	pDDS->TWSum               	=      pDDS->TWSum+pDDS->TW;
+	phase_out           		=      pDDS->TWSum;
+	if(pDDS->phaseOffset!=pDDS->phaseOffset_1ag)
+	    {
+		pDDS->TWSumShift       =      pDDS->TWSumShift+pDDS->TW+pDDS->DetTW;
+		pDDS->phaseOffset_1ag  =      pDDS->phaseOffset;
+
+	    }
+	    else
+	    {
+	    	pDDS->TWSumShift       =       pDDS->TWSumShift+pDDS->TW;
+	    }
+	    phase_outShift      	=       pDDS->TWSumShift;
+	    if (phase_outShift >  (1<<pDDS-> accumulatorWidth)-1)
+	    	{
+	        	phase_outShift       =      phase_outShift-(1<<pDDS-> accumulatorWidth)+1;//>>pDDS->accumulatorWidth;
+	        	pDDS->TWSumShift        =     phase_outShift;
+	    	}
+	    if (phase_out >  (1<<pDDS-> accumulatorWidth)-1)
+	       {
+	        	phase_out       	=   phase_out-(1<<pDDS-> accumulatorWidth)+1;//>>pDDS->accumulatorWidth;
+	        	pDDS->TWSum       =   phase_out;
+	       }
+	     LUTIndexShift   =   (float)phase_outShift/(float)((1<<(pDDS->accumulatorWidth-pDDS->LUTGridWidth)));
+	     LUTIndex        =   (float)phase_out/(float)((1<<(pDDS->accumulatorWidth-pDDS->LUTGridWidth)));
+	 if (pDDS->enable==1)
+	 {
+	     pDDS->Out =LUTinterp(LUTIndex, LUT_T, LUT_d)*pDDS->amp;
+	     pDDS->ShiftOut =LUTinterp(LUTIndexShift, LUT_T, LUT_d)+Offset;
+	 }
+	 else
+	 {
+		 pDDS->Out=0;
+		 pDDS->ShiftOut=0;
+	 }
+};
+
 void PID_Calc(tPID* pPID,uint8_t PIDInputOption, double ADCvalue,double LockIn)
 {
 	double 			output;
@@ -274,7 +387,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		ADC_End =DWT->CYCCNT;
 		volt_value = DIG2WOLT*(float)(adc_value);
 		PID_Calc(pPID1,PIDInputOption, volt_value,LockInOutput);
-		DACoutput1 = (uint16_t)(InstancePID1.outvalue*VOLT2DIG16BIT);
+		DDS_Calc();
+	//	DACoutput1 = (uint16_t)(InstancePID1.outvalue*VOLT2DIG16BIT);
+		DACoutput1=(uint16_t)(InstanceDDS.ShiftOut*VOLT2DIG16BIT); //
 		PID_End=DWT->CYCCNT;
 		PID_duration =(PID_End-ADC_End)*0.0025;
 		ADC_duration = (ADC_End-SPI_End)*0.0025;
@@ -332,6 +447,7 @@ int main(void)
   __HAL_TIM_SET_AUTORELOAD(&htim2,  Tim2ARR);
   paramFreq = CTRLFREQUENCY;
   PID_vInit(pPID1);
+  DDS_vInit(0.05, 1000.0, paramFreq, ACCUMULATORWIDTH, LUTGRIDWIDTH);
   /* USER CODE BEGIN 1 */
 	 // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
   //HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);

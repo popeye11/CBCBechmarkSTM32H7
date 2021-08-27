@@ -1,0 +1,5 @@
+LockIn.c:12:6:DDS_vInit	24	static
+LockIn.c:41:6:FIR_Init	0	static
+LockIn.c:99:7:FIR_Calc	0	static
+LockIn.c:121:7:LUTinterp	4	static
+LockIn.c:53:6:DDS_Calc	24	static
